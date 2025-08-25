@@ -1,0 +1,188 @@
+import csv
+import sys
+
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+
+TEST_SIZE = 0.4
+
+
+def main():
+
+    # Check command-line arguments
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python shopping.py data")
+
+    # Load data from spreadsheet and split into train and test sets
+    evidence, labels = load_data(sys.argv[1])
+    X_train, X_test, y_train, y_test = train_test_split(
+        evidence, labels, test_size=TEST_SIZE
+    )
+
+    # Train model and make predictions
+    model = train_model(X_train, y_train)
+    predictions = model.predict(X_test)
+    sensitivity, specificity = evaluate(y_test, predictions)
+
+    # Print results
+    print(f"Correct: {(y_test == predictions).sum()}")
+    print(f"Incorrect: {(y_test != predictions).sum()}")
+    print(f"True Positive Rate: {100 * sensitivity:.2f}%")
+    print(f"True Negative Rate: {100 * specificity:.2f}%")
+
+
+def load_data(filename):
+    """
+    Load shopping data from a CSV file `filename` and convert into a list of
+    evidence lists and a list of labels. Return a tuple (evidence, labels).
+
+    evidence should be a list of lists, where each list contains the
+    following values, in order:
+        - Administrative, an integer
+        - Administrative_Duration, a floating point number
+        - Informational, an integer
+        - Informational_Duration, a floating point number
+        - ProductRelated, an integer
+        - ProductRelated_Duration, a floating point number
+        - BounceRates, a floating point number
+        - ExitRates, a floating point number
+        - PageValues, a floating point number
+        - SpecialDay, a floating point number
+        - Month, an index from 0 (January) to 11 (December)
+        - OperatingSystems, an integer
+        - Browser, an integer
+        - Region, an integer
+        - TrafficType, an integer
+        - VisitorType, an integer 0 (not returning) or 1 (returning)
+        - Weekend, an integer 0 (if false) or 1 (if true)
+
+    labels should be the corresponding list of labels, where each label
+    is 1 if Revenue is true, and 0 otherwise.
+    """
+    def to_int(s):
+            try:
+                return int(s.strip())
+            except Exception as e:
+                raise ValueError("Error converting to int")
+
+    def to_float(s):
+            try:
+                return float(s.strip())
+            except Exception as e:
+                raise ValueError("Error converting to float")
+            
+    def bool_to_int(s):
+            try:
+                s2 = s.strip().lower()
+                if s2=="true":
+                    return 1
+                elif s2=="false":
+                    return 0
+            except Exception as e:
+                raise ValueError("Error converting bool to int")
+
+    months ={
+            "Jan":0, 
+             "Feb":1,
+             "Mar":2,
+             "Apr":3,
+             "May":4,
+             "June":5,
+             "Jul":6,
+             "Aug":7,
+             "Sep":8,
+             "Oct":9,
+             "Nov":10,
+             "Dec":11
+            }
+
+    visitor_type={'Returning_Visitor':1,
+                      'New_Visitor':0,
+                      'Other': 0}
+
+
+    with open(filename) as f:
+        reader = csv.reader(f)
+        next(reader)
+
+        dataset = []
+
+        for row in reader:
+            if len(row)==18: 
+             dataset.append([
+                  to_int(row[0]),
+                  to_float(row[1]),
+                  to_int(row[2]),
+                  to_float(row[3]),
+                  to_int(row[4]),
+                  to_float(row[5]),
+                  to_float(row[6]),
+                  to_float(row[7]),
+                  to_float(row[8]),
+                  to_float(row[9]),
+                  months[row[10]],
+                  to_int(row[11]),
+                  to_int(row[12]),
+                  to_int(row[13]),
+                  to_int(row[14]),
+                  visitor_type[row[15]],
+                  bool_to_int(row[16]),
+                  bool_to_int(row[17])
+            ])
+             
+    evidence = [row[:17] for row in dataset]
+    label =[row[17] for row in dataset]
+    return evidence,label
+
+   
+
+def train_model(evidence, labels):
+    """
+    Given a list of evidence lists and a list of labels, return a
+    fitted k-nearest neighbor model (k=1) trained on the data.
+    """
+    model = KNeighborsClassifier(n_neighbors=1)
+    model.fit(evidence,labels)
+    return model
+
+
+
+def evaluate(labels, predictions):
+    """
+    Given a list of actual labels and a list of predicted labels,
+    return a tuple (sensitivity, specificity).
+
+    Assume each label is either a 1 (positive) or 0 (negative).
+
+    `sensitivity` should be a floating-point value from 0 to 1
+    representing the "true positive rate": the proportion of
+    actual positive labels that were accurately identified.
+
+    `specificity` should be a floating-point value from 0 to 1
+    representing the "true negative rate": the proportion of
+    actual negative labels that were accurately identified.
+    """
+    true_positive_prediction_count = 0 
+    true_positive_count = 0
+    
+    true_negative_prediction_count = 0 
+    true_negative_count = 0
+
+    for label,prediction in zip(labels,predictions):
+        if label==1:
+            true_positive_count+=1
+            if prediction==1:
+                 true_positive_prediction_count+=1
+                
+        elif label==0:
+            true_negative_count+=1
+            if prediction==0:
+                 true_negative_prediction_count+=1
+
+    return (true_positive_prediction_count/true_positive_count , true_negative_prediction_count/true_negative_count)            
+    
+
+
+
+if __name__ == "__main__":
+    main()
